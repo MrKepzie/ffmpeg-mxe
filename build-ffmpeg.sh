@@ -1,5 +1,13 @@
 #!/bin/sh
-
+# Written by Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fe
+# 
+#Options:
+# NO_MXE_PKG=1: Do not check if required MXE dependencies are installed for a faster build
+# MXE_PATH="..." (required): Path to MXE installation
+# MKJOBS=X: Number of threads to build FFMPEG
+#Usage:
+# sh build-ffmpeg.sh <BIT>
+# BIT=32 or 64
 
 THIRD_PARTY_SRC_URL=http://downloads.natron.fr/Third_Party_Sources
 GSM_TAR=gsm-1.0.13.tar.gz
@@ -31,8 +39,8 @@ INSTALL_PATH="$MXE_PATH/usr/$TARGET"
 CROSS_PREFIX="${TARGET}-"
 PATCHES_DIR="$CWD/patches"
 
-PATH=$MXE_PATH/usr/bin:$PATH
-
+PATH=$MXE_PATH/usr/bin:$INSTALL_PATH/bin:$PATH
+LD_LIBRARY_PATH=$INSTALL_PATH/lib:$LD_LIBRARY_PATH
 
 SRC_PATH=$CWD/src
 TMP_PATH=$CWD/tmp
@@ -75,12 +83,11 @@ if [ ! -f "${INSTALL_PATH}/lib/libwavpack.a" ]; then
 fi
 
 cd $MXE_PATH || exit 1
+if [ "$NO_MXE_PKG" != "1" ]; then
 make vorbis
-make libass
-make fontconfig
-make freetype
 make x264
 make xvidcore
+fi
 
 cd $TMP_PATH || exit 1
 if [ ! -f $SRC_PATH/$FFMPEG_TAR ]; then
@@ -88,45 +95,50 @@ if [ ! -f $SRC_PATH/$FFMPEG_TAR ]; then
 fi
 tar xvf $SRC_PATH/$FFMPEG_TAR || exit 1
 cd ffmpeg-2* || exit 1
- 
- #Compile GPL version of ffmpeg
-./configure  --cross-prefix=$CROSS_PREFIX \
+
+
+# These configure options make tons of undefined reference if enabled	
+# --enable-libopus \
+#	--enable-libass \
+#	--enable-libfreetype \
+#	--enable-fontconfig \
+#	--enable-libfribidi \
+	
+ #Compile GPL-v2 version of ffmpeg
+./configure \
+	--cross-prefix="$CROSS_PREFIX" \
 	--enable-cross-compile \
 	--arch=$ARCH \
 	--target-os=mingw32 \
-	--prefix=${INSTALL_PATH} \
-	--yasmexe=${CROSS_PREFIX}yasm \
-    --enable-shared \
-    --disable-static \
-    --disable-memalign-hack \
+	--prefix="${INSTALL_PATH}" \
+	--disable-static --enable-shared \
+	--yasmexe="${CROSS_PREFIX}yasm" \
+	--disable-debug \
+    --enable-memalign-hack \
+    --disable-doc \
+    --extra-libs='-mconsole' \
     --disable-pthreads \
     --enable-w32threads \
-    --disable-debug \
-    --disable-ffprobe \
+    --disable-sdl  \
     --enable-avresample \
-    --enable-libgsm \
-    --enable-libmodplug \
-    --enable-libmp3lame \
-    --enable-libopenjpeg \
-    --enable-libopus \
-    --enable-libschroedinger \
-    --enable-libspeex \
-    --enable-libtheora \
-    --enable-libvorbis \
-    --enable-libvpx \
-    --enable-libwavpack \
-    --enable-pic \
-    --enable-runtime-cpudetect \
     --enable-swresample \
-    --enable-libass \
-    --enable-lzma \
-    --enable-fontconfig \
-    --enable-libfreetype \
-    --enable-libfribidi \
-    --enable-zlib \
-    --disable-doc \
     --enable-gpl \
-    --enable-postproc \
-    --enable-libx264 \
-    --enable-libxvid || exit 1
+	--enable-postproc \
+	--enable-libx264 \
+	--enable-libxvid \
+	--enable-libtheora \
+	--enable-libvorbis \
+	--enable-libvpx \
+	--enable-libmp3lame \
+	--enable-libopenjpeg \
+	--enable-libschroedinger \
+	--enable-libspeex \
+	--enable-libmodplug \
+	--enable-libgsm \
+    --enable-libwavpack \
+	--enable-lzma \
+	--enable-zlib \
+    --enable-pic \
+    --enable-runtime-cpudetect || exit 1
 make -j${MKJOBS} || exit 1
+make install || exit 1
