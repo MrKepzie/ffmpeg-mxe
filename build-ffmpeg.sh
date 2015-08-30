@@ -5,14 +5,31 @@
 # NO_MXE_PKG=1: Do not check if required MXE dependencies are installed for a faster build
 # MXE_PATH="..." (required): Path to MXE installation
 # MKJOBS=X: Number of threads to build FFMPEG
+# BUILD_LGPL=1: Build a LGPL version of ffmpeg instead of the GPLv2 version
+# NO_TAR=1: Do not create an archive with the build directory
+# NO_UPLOAD=1: Do not upload build to the remote server.
+# NO_BUILD=1: Do not build ffmpeg and pick the one on the target system instead. WARNING: This is dangerous since the license of the ffmpeg installed on the system is probably not the same as the license selected. Use this at your own risks.
 #Usage:
 # sh build-ffmpeg.sh <BIT>
 # BIT=32 or 64
 
+#-----------Customizable options------------------
 THIRD_PARTY_SRC_URL=http://downloads.natron.fr/Third_Party_Sources
+REMOTE_HOST_USER=mrkepzie
+REMOTE_HOST=vps163799.ovh.net
+REMOTE_HOST_PATH=../www/downloads.natron.fr/Third_Party_Binaries
+#-------------------------------------------------
+
+#-----------Dependencies version------------------
 GSM_TAR=gsm-1.0.13.tar.gz
 WAVEPACK_TAR=wavpack-4.75.0.tar.bz2
+#-------------------------------------------------
+
+#-----------FFMPEG version------------------------
 FFMPEG_TAR=ffmpeg-2.7.2.tar.bz2
+#-------------------------------------------------
+
+FFMPEG_BASE_NAME=$(echo $FFMPEG_TAR | sed 's/.tar.bz2//')
 
 if [ "$1" == "32" ]; then
 	ARCH=i686
@@ -31,7 +48,15 @@ if [ -z "$MKJOBS" ]; then
 	MKJOBS=8
 fi
 
-echo "Using $MKJOBS threads..."
+
+OUTPUT_NAME="${FFMPEG_BASE_NAME}-windows-${ARCH}-shared"
+if [ ! -z "$BUILD_LGPL" ]; then
+    OUTPUT_NAME_LICENSED="${OUTPUT_NAME}-LGPL"
+else
+    OUTPUT_NAME_LICENSED="${OUTPUT_NAME}-GPLv2"
+fi
+
+echo "Building ${OUTPUT_NAME_LICENSED} using $MKJOBS threads..."
 
 CWD=$(pwd)
 
@@ -90,55 +115,107 @@ make xvidcore
 fi
 
 cd $TMP_PATH || exit 1
-if [ ! -f $SRC_PATH/$FFMPEG_TAR ]; then
-	wget $THIRD_PARTY_SRC_URL/$FFMPEG_TAR -O $SRC_PATH/$FFMPEG_TAR || exit 1
-fi
-tar xvf $SRC_PATH/$FFMPEG_TAR || exit 1
-cd ffmpeg-2* || exit 1
 
-
-# These configure options make tons of undefined reference if enabled	
+# These configure options make tons of undefined reference if enabled
 # --enable-libopus \
 #	--enable-libass \
 #	--enable-libfreetype \
 #	--enable-fontconfig \
 #	--enable-libfribidi \
-	
- #Compile GPL-v2 version of ffmpeg
-./configure \
-	--cross-prefix="$CROSS_PREFIX" \
-	--enable-cross-compile \
-	--arch=$ARCH \
-	--target-os=mingw32 \
-	--prefix="${INSTALL_PATH}" \
-	--disable-static --enable-shared \
-	--yasmexe="${CROSS_PREFIX}yasm" \
-	--disable-debug \
-    --enable-memalign-hack \
-    --disable-doc \
-    --extra-libs='-mconsole' \
-    --disable-pthreads \
-    --enable-w32threads \
-    --disable-sdl  \
-    --enable-avresample \
-    --enable-swresample \
-    --enable-gpl \
-	--enable-postproc \
-	--enable-libx264 \
-	--enable-libxvid \
-	--enable-libtheora \
-	--enable-libvorbis \
-	--enable-libvpx \
-	--enable-libmp3lame \
-	--enable-libopenjpeg \
-	--enable-libschroedinger \
-	--enable-libspeex \
-	--enable-libmodplug \
-	--enable-libgsm \
-    --enable-libwavpack \
-	--enable-lzma \
-	--enable-zlib \
-    --enable-pic \
-    --enable-runtime-cpudetect || exit 1
-make -j${MKJOBS} || exit 1
-make install || exit 1
+
+CONF_OPTIONS_COMMON="--cross-prefix=$CROSS_PREFIX --enable-cross-compile --arch=$ARCH --target-os=mingw32 --prefix=${INSTALL_PATH} --disable-static --enable-shared --yasmexe=${CROSS_PREFIX}yasm --disable-debug --enable-memalign-hack --disable-doc --extra-libs=-mconsole --disable-pthreads --enable-w32threads --disable-sdl --enable-avresample --enable-swresample --enable-libtheora --enable-libvorbis --enable-libvpx --enable-libmp3lame --enable-libopenjpeg --enable-libschroedinger --enable-libspeex --enable-libmodplug --enable-libgsm --enable-libwavpack --enable-lzma --enable-zlib --enable-pic --enable-runtime-cpudetect"
+
+CONF_OPTIONS_GPLV2="--enable-gpl --enable-postproc --enable-libx264 --enable-libxvid"
+
+if [ ! -z "$NO_BUILD" ]; then
+    #Check that ffmpeg on the target system has the same license as the one requested
+    HAS_GPL=$(strings ${INSTALL_PATH}/bin/ffmpeg.exe | grep "under the terms of the GNU General Public License")
+    HAS_LGPL=$(strings ${INSTALL_PATH}/bin/ffmpeg.exe | grep "under the terms of the GNU Lesser General Public")
+    if [ ! -z "$BUILD_LGPL" ] && [ ! -z "$HAS_GPL" ]; then
+        echo "Installed FFmpeg version is GPLv2 but you requested a LGPL one."
+        exit 1
+    elif [ -z "$BUILD_LGPL" ] && [ ! -z "$HAS_LGPL" ]; then
+        echo "Installed FFmpeg version is LGPL but you requested a GPLv2 one."
+        exit 1
+    fi
+fi
+
+if [ -z "$NO_BUILD" ]; then
+
+    if [ ! -f $SRC_PATH/$FFMPEG_TAR ]; then
+        wget $THIRD_PARTY_SRC_URL/$FFMPEG_TAR -O $SRC_PATH/$FFMPEG_TAR || exit 1
+    fi
+    tar xf $SRC_PATH/$FFMPEG_TAR || exit 1
+    cd ffmpeg-2* || exit 1
+
+
+    if [ -z "$BUILD_LGPL" ]; then
+        CONF_OPTIONS_COMMON="${CONF_OPTIONS_COMMON} ${CONF_OPTIONS_GPLV2}"
+    fi
+
+    echo
+    echo "Configure options:"
+    echo "$CONF_OPTIONS_COMMON"
+    ./configure ${CONF_OPTIONS_COMMON} || exit 1
+
+    make -j${MKJOBS} || exit 1
+    make install || exit 1
+    cd $TMP_PATH || exit 1
+# NO_BUILD
+fi
+
+if [ ! -z "$BUILD_LGPL" ]; then
+    echo "FFMPEG build licensed under LGPL." > README.txt
+else
+    echo "FFMPEG build licensed under GPLv2." > README.txt
+fi
+echo "---------------configured with:----------------" >> README.txt
+echo "$CONF_OPTIONS_COMMON" >> README.txt
+
+rm -rf $TMP_PATH/$OUTPUT_NAME_LICENSED
+mkdir $TMP_PATH/$OUTPUT_NAME_LICENSED || exit 1
+mv README.txt $TMP_PATH/$OUTPUT_NAME_LICENSED
+mkdir -p $TMP_PATH/$OUTPUT_NAME_LICENSED/bin  || exit 1
+mkdir -p $TMP_PATH/$OUTPUT_NAME_LICENSED/lib  || exit 1
+mkdir -p $TMP_PATH/$OUTPUT_NAME_LICENSED/lib/pkgconfig  || exit 1
+mkdir -p $TMP_PATH/$OUTPUT_NAME_LICENSED/include || exit 1
+cp ${INSTALL_PATH}/bin/ff*.exe $TMP_PATH/$OUTPUT_NAME_LICENSED/bin || exit 1
+cp ${INSTALL_PATH}/lib/pkgconfig/{libav*.pc,libsw*.pc,libpostproc*.pc}  $TMP_PATH/$OUTPUT_NAME_LICENSED/lib/pkgconfig || exit 1
+cp ${INSTALL_PATH}/lib/{libav*.dll.a,libsw*.dll.a,libpostproc*.dll.a} $TMP_PATH/$OUTPUT_NAME_LICENSED/lib || exit
+cp ${INSTALL_PATH}/bin/{av*.dll,sw*.dll,postproc*.dll} $TMP_PATH/$OUTPUT_NAME_LICENSED/bin || exit 1
+cp ${INSTALL_PATH}/bin/{av*.lib,sw*.lib,postproc*.lib} $TMP_PATH/$OUTPUT_NAME_LICENSED/bin || exit 1
+cp -r ${INSTALL_PATH}/include/{libav*,libsw*,libpostproc*} $TMP_PATH/$OUTPUT_NAME_LICENSED/include || exit 1
+
+#Check that the build has the correct license
+HAS_GPL=$(strings $TMP_PATH/${OUTPUT_NAME_LICENSED}/bin/ffmpeg.exe | grep "under the terms of the GNU General Public License")
+HAS_LGPL=$(strings $TMP_PATH/${OUTPUT_NAME_LICENSED}/bin/ffmpeg.exe | grep "under the terms of the GNU Lesser General Public")
+if [ ! -z "$BUILD_LGPL" ] && [ ! -z "$HAS_GPL" ]; then
+    echo "Error: built FFmpeg version is GPLv2 but you requested a LGPL one."
+    echo "Removing build files..."
+    rm -rf $TMP_PATH
+    exit 1
+elif [ -z "$BUILD_LGPL" ] && [ ! -z "$HAS_LGPL" ]; then
+    echo "Error: build FFmpeg version is LGPL but you requested a GPLv2 one."
+    echo "Removing build files..."
+    rm -rf $TMP_PATH
+    exit 1
+fi
+
+if [ -z "$NO_TAR" ]; then
+    cd $TMP_PATH || exit 1
+    echo "Creating ${OUTPUT_NAME_LICENSED}.tar.xz ..."
+    tar cJf ${OUTPUT_NAME_LICENSED}.tar.xz $OUTPUT_NAME_LICENSED || exit 1
+    mv ${OUTPUT_NAME_LICENSED}.tar.xz $CWD || exit 1
+    echo "Done."
+fi
+
+cd $CWD || exit 1
+
+if [ -z "$NO_UPLOAD" ]; then
+    echo "Uploading to $REMOTE_HOST..."
+    rsync -avz --progress -e ssh ${OUTPUT_NAME_LICENSED}.tar.xz ${REMOTE_HOST_USER}@${REMOTE_HOST}:${REMOTE_HOST_PATH}
+    echo "Done."
+fi
+
+echo "Build of ${OUTPUT_NAME_LICENSED} eone."
+
