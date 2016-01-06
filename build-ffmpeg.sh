@@ -26,7 +26,7 @@ WAVEPACK_TAR=wavpack-4.75.0.tar.bz2
 #-------------------------------------------------
 
 #-----------FFMPEG version------------------------
-FFMPEG_TAR=ffmpeg-2.8.3.tar.xz
+FFMPEG_TAR=ffmpeg-2.8.4.tar.xz
 #-------------------------------------------------
 
 FFMPEG_BASE_NAME=$(echo $FFMPEG_TAR | sed 's/.tar.bz2//')
