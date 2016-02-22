@@ -26,7 +26,7 @@ WAVEPACK_TAR=wavpack-4.75.0.tar.bz2
 #-------------------------------------------------
 
 #-----------FFMPEG version------------------------
-FFMPEG_TAR=ffmpeg-2.8.4.tar.xz
+FFMPEG_TAR=ffmpeg-2.8.6.tar.xz
 #-------------------------------------------------
 
 FFMPEG_BASE_NAME=$(echo $FFMPEG_TAR | sed 's/.tar.bz2//;s/.tar.gz//;s/.tar.xz//')
@@ -123,7 +123,7 @@ cd $TMP_PATH || exit 1
 #	--enable-fontconfig \
 #	--enable-libfribidi \
 
-CONF_OPTIONS_COMMON="--cross-prefix=$CROSS_PREFIX --enable-cross-compile --arch=$ARCH --target-os=mingw32 --prefix=${INSTALL_PATH} --disable-static --enable-shared --yasmexe=${CROSS_PREFIX}yasm --disable-debug --enable-memalign-hack --disable-doc --extra-libs=-mconsole --disable-pthreads --enable-w32threads --disable-sdl --enable-avresample --enable-swresample --enable-libtheora --enable-libvorbis --enable-libvpx --enable-libmp3lame --enable-libopenjpeg --enable-libschroedinger --enable-libspeex --enable-libmodplug --enable-libgsm --enable-libwavpack --enable-lzma --enable-zlib --enable-pic --enable-runtime-cpudetect"
+CONF_OPTIONS_COMMON="--cross-prefix=$CROSS_PREFIX --enable-cross-compile --arch=$ARCH --target-os=mingw32 --prefix=${INSTALL_PATH} --disable-static --enable-shared --yasmexe=${CROSS_PREFIX}yasm --disable-debug --enable-memalign-hack --disable-doc --extra-libs=-mconsole --disable-pthreads --enable-w32threads --disable-sdl --enable-avresample --enable-swresample --enable-libtheora --enable-libvorbis --enable-libvpx --enable-libmp3lame --enable-libopenjpeg --disable-libschroedinger --enable-libspeex --disable-libmodplug --enable-libgsm --enable-libwavpack --enable-lzma --enable-zlib --enable-pic --enable-runtime-cpudetect"
 
 CONF_OPTIONS_GPLV2="--enable-gpl --enable-postproc --enable-libx264 --enable-libxvid"
 
@@ -148,6 +148,10 @@ if [ -z "$NO_BUILD" ]; then
     tar xf $SRC_PATH/$FFMPEG_TAR || exit 1
     cd ffmpeg-2* || exit 1
 
+
+    patch -p0< $CWD/patches/ffmpeg-configure.diff || exit 1
+    patch -p1< $CWD/patches/libopenjpegdec.c.patch || exit 1
+    patch -p1< $CWD/patches/libopenjpegenc.c.patch || exit 1
 
     if [ -z "$BUILD_LGPL" ]; then
         CONF_OPTIONS_COMMON="${CONF_OPTIONS_COMMON} ${CONF_OPTIONS_GPLV2}"

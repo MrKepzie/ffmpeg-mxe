@@ -1,0 +1,19 @@
+--- configure.orig	2016-02-22 17:25:30.316496695 +0100
++++ configure	2016-02-22 17:28:32.232407482 +0100
+@@ -1697,6 +1697,7 @@
+     machine_ioctl_bt848_h
+     machine_ioctl_meteor_h
+     malloc_h
++    openjpeg_2_1_openjpeg_h
+     openjpeg_1_5_openjpeg_h
+     OpenGL_gl3_h
+     poll_h
+@@ -5251,7 +5252,7 @@
+ enabled libopenh264       && require_pkg_config openh264 wels/codec_api.h WelsGetCodecVersion
+ enabled libopenjpeg       && { check_lib openjpeg.h opj_version -lopenmj2 -DOPJ_STATIC ||
+                                check_lib openjpeg-1.5/openjpeg.h opj_version -lopenjpeg -DOPJ_STATIC ||
+-                               check_lib openjpeg.h opj_version -lopenjpeg -DOPJ_STATIC ||
++                               check_lib openjpeg-2.1/openjpeg.h opj_version -lopenjp2 -DOPJ_STATIC ||
+                                die "ERROR: libopenjpeg not found"; }
+ enabled libopus           && require_pkg_config opus opus_multistream.h opus_multistream_decoder_create
+ enabled libpulse          && require_pkg_config libpulse pulse/pulseaudio.h pa_context_new
