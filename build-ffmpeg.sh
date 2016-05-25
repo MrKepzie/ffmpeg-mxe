@@ -2,6 +2,8 @@
 # Written by Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fe
 # 
 #Options:
+# BITS={32,64}
+# BUILD_DEBUG=1: Builds a debug version of ffmpeg
 # NO_MXE_PKG=1: Do not check if required MXE dependencies are installed for a faster build
 # MXE_PATH="..." (required): Path to MXE installation
 # MKJOBS=X: Number of threads to build FFMPEG
@@ -10,15 +12,15 @@
 # NO_UPLOAD=1: Do not upload build to the remote server.
 # NO_BUILD=1: Do not build ffmpeg and pick the one on the target system instead. WARNING: This is dangerous since the license of the ffmpeg installed on the system is probably not the same as the license selected. Use this at your own risks.
 #Usage:
-# sh build-ffmpeg.sh <BIT>
+# sh BITS=64 MXE_PATH=... build-ffmpeg.sh
 # BIT=32 or 64
 
-#-----------Customizable options------------------
-THIRD_PARTY_SRC_URL=http://downloads.natron.fr/Third_Party_Sources
-REMOTE_HOST_USER=mrkepzie
-REMOTE_HOST=vps163799.ovh.net
-REMOTE_HOST_PATH=../www/downloads.natron.fr/Third_Party_Binaries
-#-------------------------------------------------
+if [ ! -f "local.sh" ]; then
+    echo "Please create a local.sh file defining REMOTE_USER, REMOTE_HOST, REMOTE_HOST_PATH, THIRD_PARTY_SRC_URL"
+    exit 1
+fi
+source `pwd`/local.sh || exit 1
+
 
 #-----------Dependencies version------------------
 GSM_TAR=gsm-1.0.13.tar.gz
@@ -26,10 +28,35 @@ WAVEPACK_TAR=wavpack-4.75.0.tar.bz2
 #-------------------------------------------------
 
 #-----------FFMPEG version------------------------
-FFMPEG_TAR=ffmpeg-2.8.6.tar.xz
+FFMPEG_TAR=ffmpeg-2.8.7.tar.xz
 #-------------------------------------------------
 
+REQUIRED_FILES="$FFMPEG_TAR $GSM_TAR $WAVEPACK_TAR"
+
 FFMPEG_BASE_NAME=$(echo $FFMPEG_TAR | sed 's/.tar.bz2//;s/.tar.gz//;s/.tar.xz//')
+
+if [ -z "$NO_UPLOAD" ]; then
+    if [ -z "$REMOTE_USER" ]; then
+        echo "You must set REMOTE_USER to the user on the server that will be used to upload the build."
+        exit 1
+    fi
+
+    if [ -z "$REMOTE_HOST" ]; then
+        echo "You must set REMOTE_HOST to the server address to which to upload the build."
+        exit 1
+    fi
+
+    if [ -z "$REMOTE_HOST_PATH" ]; then
+        echo "You must set REMOTE_HOST_PATH to the path on the server where to upload the build."
+        exit 1
+    fi
+
+    if [ -z "$THIRD_PARTY_SRC_URL" ]; then
+        echo "Please set THIRD_PARTY_SRC_URL to the location of the tarballs of the sources for the required libs. This location should contain the following files:"
+
+        exit 1
+    fi
+fi
 
 if [ "$1" == "32" ]; then
 	ARCH=i686
@@ -54,6 +81,10 @@ if [ ! -z "$BUILD_LGPL" ]; then
     OUTPUT_NAME_LICENSED="${OUTPUT_NAME}-LGPL"
 else
     OUTPUT_NAME_LICENSED="${OUTPUT_NAME}-GPLv2"
+fi
+
+if [ "$BUILD_DEBUG" = "1" ]; then
+    OUTPUT_NAME_LICENSED="$OUTPUT_NAME_LICENSED"-debug
 fi
 
 echo "Building ${OUTPUT_NAME_LICENSED} using $MKJOBS threads..."
@@ -123,9 +154,15 @@ cd $TMP_PATH || exit 1
 #	--enable-fontconfig \
 #	--enable-libfribidi \
 
-CONF_OPTIONS_COMMON="--cross-prefix=$CROSS_PREFIX --enable-cross-compile --arch=$ARCH --target-os=mingw32 --prefix=${INSTALL_PATH} --disable-static --enable-shared --yasmexe=${CROSS_PREFIX}yasm --disable-debug --enable-memalign-hack --disable-doc --extra-libs=-mconsole --disable-pthreads --enable-w32threads --disable-sdl --enable-avresample --enable-swresample --enable-libtheora --enable-libvorbis --enable-libvpx --enable-libmp3lame --enable-libopenjpeg --disable-libschroedinger --enable-libspeex --disable-libmodplug --enable-libgsm --enable-libwavpack --enable-lzma --enable-zlib --enable-pic --enable-runtime-cpudetect"
+CONF_OPTIONS_COMMON="--cross-prefix=$CROSS_PREFIX --enable-cross-compile --arch=$ARCH --target-os=mingw32 --prefix=${INSTALL_PATH} --disable-static --enable-shared --yasmexe=${CROSS_PREFIX}yasm --enable-memalign-hack --disable-doc --extra-libs=-mconsole --disable-pthreads --enable-w32threads --disable-sdl --enable-avresample --enable-swresample --enable-libtheora --enable-libvorbis --enable-libvpx --enable-libmp3lame --enable-libopenjpeg --disable-libschroedinger --enable-libspeex --disable-libmodplug --enable-libgsm --enable-libwavpack --enable-lzma --enable-zlib --enable-pic --enable-runtime-cpudetect"
 
 CONF_OPTIONS_GPLV2="--enable-gpl --enable-postproc --enable-libx264 --enable-libxvid"
+
+if [ "$BUILD_DEBUG" = "1" ]; then
+    CONF_OPTIONS_DEBUG="--enable-debug"
+else
+    CONF_OPTIONS_DEBUG="--disable-debug"
+fi
 
 if [ ! -z "$NO_BUILD" ]; then
     #Check that ffmpeg on the target system has the same license as the one requested
@@ -154,7 +191,7 @@ if [ -z "$NO_BUILD" ]; then
     patch -p1< $CWD/patches/libopenjpegenc.c.patch || exit 1
 
     if [ -z "$BUILD_LGPL" ]; then
-        CONF_OPTIONS_COMMON="${CONF_OPTIONS_COMMON} ${CONF_OPTIONS_GPLV2}"
+        CONF_OPTIONS_COMMON="${CONF_OPTIONS_DEBUG} ${CONF_OPTIONS_COMMON} ${CONF_OPTIONS_GPLV2}"
     fi
 
     echo
@@ -217,7 +254,7 @@ cd $CWD || exit 1
 
 if [ -z "$NO_UPLOAD" ]; then
     echo "Uploading to $REMOTE_HOST..."
-    rsync -avz --progress -e ssh ${OUTPUT_NAME_LICENSED}.tar.xz ${REMOTE_HOST_USER}@${REMOTE_HOST}:${REMOTE_HOST_PATH}
+    rsync -avz --progress -e ssh ${OUTPUT_NAME_LICENSED}.tar.xz ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_HOST_PATH}
     echo "Done."
 fi
 

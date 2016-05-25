@@ -21,13 +21,30 @@ Open *build-ffmpeg.sh* and edit the customizable options to setup the remote ser
 Now just type:
     
     export MXE_PATH=...
-    sh build-all.sh
+    env NO_UPLOAD=1 MKJOBS=8 sh build-all.sh
 
 This will build 4 variants of ffmpeg: 64bit-Gplv2 64bit-LGPL 32bit-GPLv2 32bit-LGPL.
 
 Alternatively you can build only one of them by using:
 
     export MXE_PATH=...
-    env <BUILD_LGPL=1> sh build-ffmpeg.sh 64
+    env NO_MXE_PKG=1 MKJOBS=8 NO_UPLOAD=1 BITS=64 sh build-ffmpeg.sh || exit 1
 
+
+If you want your script to automatically upload the build on to some remote location, you can specify a remote user and host in a file named **local.sh** next to the build-ffmpeg.sh script.
+The file should be as such:
+
+    #!/bin/sh
+
+    #This is the URL to where the required third party sources are located
+    THIRD_PARTY_SRC_URL=...
+
+    #This is the name of the user that will be used to upload the build
+    REMOTE_USER=...
+
+    #This is the address of the host
+    REMOTE_HOST=...
+
+    #This is the location on the host where to upload the files
+    REMOTE_HOST_PATH=...
 
