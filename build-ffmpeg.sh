@@ -13,7 +13,6 @@
 # NO_BUILD=1: Do not build ffmpeg and pick the one on the target system instead. WARNING: This is dangerous since the license of the ffmpeg installed on the system is probably not the same as the license selected. Use this at your own risks.
 #Usage:
 # sh BITS=64 MXE_PATH=... build-ffmpeg.sh
-# BIT=32 or 64
 
 if [ ! -f "local.sh" ]; then
     echo "Please create a local.sh file defining REMOTE_USER, REMOTE_HOST, REMOTE_HOST_PATH, THIRD_PARTY_SRC_URL"
@@ -58,7 +57,7 @@ if [ -z "$NO_UPLOAD" ]; then
     fi
 fi
 
-if [ "$1" == "32" ]; then
+if [ "$BITS" == "32" ]; then
 	ARCH=i686
 	TARGET=i686-w64-mingw32.static
 else
