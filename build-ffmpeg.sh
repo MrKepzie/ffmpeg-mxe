@@ -27,7 +27,7 @@ WAVEPACK_TAR=wavpack-4.75.0.tar.bz2
 #-------------------------------------------------
 
 #-----------FFMPEG version------------------------
-FFMPEG_TAR=ffmpeg-2.8.7.tar.xz
+FFMPEG_TAR=ffmpeg-3.0.2.tar.xz
 #-------------------------------------------------
 
 REQUIRED_FILES="$FFMPEG_TAR $GSM_TAR $WAVEPACK_TAR"
@@ -182,12 +182,12 @@ if [ -z "$NO_BUILD" ]; then
         wget $THIRD_PARTY_SRC_URL/$FFMPEG_TAR -O $SRC_PATH/$FFMPEG_TAR || exit 1
     fi
     tar xf $SRC_PATH/$FFMPEG_TAR || exit 1
-    cd ffmpeg-2* || exit 1
+    cd ffmpeg-* || exit 1
 
 
-    patch -p0< $CWD/patches/ffmpeg-configure.diff || exit 1
-    patch -p1< $CWD/patches/libopenjpegdec.c.patch || exit 1
-    patch -p1< $CWD/patches/libopenjpegenc.c.patch || exit 1
+#    patch -p0< $CWD/patches/ffmpeg-configure.diff || exit 1
+#    patch -p1< $CWD/patches/libopenjpegdec.c.patch || exit 1
+#    patch -p1< $CWD/patches/libopenjpegenc.c.patch || exit 1
 
     if [ -z "$BUILD_LGPL" ]; then
         CONF_OPTIONS_COMMON="${CONF_OPTIONS_DEBUG} ${CONF_OPTIONS_COMMON} ${CONF_OPTIONS_GPLV2}"
