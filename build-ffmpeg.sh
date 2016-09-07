@@ -27,7 +27,7 @@ WAVEPACK_TAR=wavpack-4.75.0.tar.bz2
 #-------------------------------------------------
 
 #-----------FFMPEG version------------------------
-FFMPEG_TAR=ffmpeg-3.0.2.tar.xz
+FFMPEG_TAR=ffmpeg-3.1.3.tar.xz
 #-------------------------------------------------
 
 REQUIRED_FILES="$FFMPEG_TAR $GSM_TAR $WAVEPACK_TAR"
