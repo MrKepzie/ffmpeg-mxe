@@ -27,7 +27,7 @@ WAVEPACK_TAR=wavpack-4.75.0.tar.bz2
 #-------------------------------------------------
 
 #-----------FFMPEG version------------------------
-FFMPEG_TAR=ffmpeg-3.0.2.tar.xz
+FFMPEG_TAR=ffmpeg-3.2.4.tar.xz
 #-------------------------------------------------
 
 REQUIRED_FILES="$FFMPEG_TAR $GSM_TAR $WAVEPACK_TAR"
@@ -141,6 +141,7 @@ cd $MXE_PATH || exit 1
 if [ "$NO_MXE_PKG" != "1" ]; then
 make vorbis
 make x264
+make x265
 make xvidcore
 fi
 
@@ -155,7 +156,7 @@ cd $TMP_PATH || exit 1
 
 CONF_OPTIONS_COMMON="--cross-prefix=$CROSS_PREFIX --enable-cross-compile --arch=$ARCH --target-os=mingw32 --prefix=${INSTALL_PATH} --disable-static --enable-shared --yasmexe=${CROSS_PREFIX}yasm --enable-memalign-hack --disable-doc --extra-libs=-mconsole --disable-pthreads --enable-w32threads --disable-sdl --enable-avresample --enable-swresample --enable-libtheora --enable-libvorbis --enable-libvpx --enable-libmp3lame --enable-libopenjpeg --disable-libschroedinger --enable-libspeex --disable-libmodplug --enable-libgsm --enable-libwavpack --enable-lzma --enable-zlib --enable-pic --enable-runtime-cpudetect"
 
-CONF_OPTIONS_GPLV2="--enable-gpl --enable-postproc --enable-libx264 --enable-libxvid"
+CONF_OPTIONS_GPLV2="--enable-gpl --enable-postproc --enable-libx264 --enable-libx265 --enable-libxvid"
 
 if [ "$BUILD_DEBUG" = "1" ]; then
     CONF_OPTIONS_DEBUG="--enable-debug"
